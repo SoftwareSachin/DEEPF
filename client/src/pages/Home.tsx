@@ -1,21 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FileUpload from "@/components/FileUpload";
 import ProcessingStatus from "@/components/ProcessingStatus";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import FrameAnalysis from "@/components/FrameAnalysis";
 import { Button } from "@/components/ui/button";
 import { Shield, ArrowLeft } from "lucide-react";
+import { io, Socket } from "socket.io-client";
 
 type AppState = 'upload' | 'processing' | 'results' | 'frameAnalysis';
 
 interface AnalysisResult {
-  isDeepfake: boolean;
+  overall_prediction: string;
   confidence: number;
   fileName: string;
   fileType: 'image' | 'video';
-  processingTime: number;
-  frameCount?: number;
-  modelUsed: string[];
+  faces_detected: number;
+  face_results?: Array<{
+    face_id: number;
+    bbox: number[];
+    prediction: string;
+    confidence: number;
+  }>;
+  frame_results?: Array<{
+    frame_number: number;
+    timestamp: number;
+    faces_detected: number;
+    face_results: Array<{
+      face_id: number;
+      bbox: number[];
+      prediction: string;
+      confidence: number;
+    }>;
+  }>;
+  analysis_timestamp: string;
 }
 
 interface Frame {
@@ -36,6 +53,33 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingMessage, setProcessingMessage] = useState('');
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    const newSocket = io('http://localhost:5001');
+    setSocket(newSocket);
+
+    newSocket.on('progress', (data: { job_id: string; progress: number; message: string }) => {
+      if (data.job_id === jobId) {
+        setProcessingProgress(data.progress);
+        setProcessingMessage(data.message);
+        
+        if (data.progress === 100) {
+          // Processing complete, fetch results
+          fetchResults(data.job_id);
+        }
+      }
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, [jobId]);
 
   // Mock frame data for demonstration
   const mockFrames: Frame[] = [
@@ -83,49 +127,89 @@ export default function Home() {
     }
   ];
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
     setCurrentState('processing');
     setUploadProgress(0);
+    setProcessingProgress(0);
+    setError(null);
 
-    // Simulate upload progress
-    const uploadInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(uploadInterval);
-          return 100;
-        }
-        return prev + Math.random() * 20;
+    try {
+      // Upload file to Python backend
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:5001/api/upload', {
+        method: 'POST',
+        body: formData,
       });
-    }, 200);
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setJobId(data.job_id);
+      setUploadProgress(100);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+      setCurrentState('upload');
+    }
   };
 
-  const handleProcessingComplete = () => {
-    // Simulate analysis result based on file name
-    const fileName = selectedFile?.name || 'unknown.file';
-    const isVideo = selectedFile?.type.startsWith('video/') || false;
-    
-    // Mock different results based on filename for demo
-    const mockResult: AnalysisResult = fileName.toLowerCase().includes('fake') || fileName.toLowerCase().includes('deepfake') ? {
-      isDeepfake: true,
-      confidence: 0.87 + Math.random() * 0.1,
-      fileName,
-      fileType: isVideo ? 'video' : 'image',
-      processingTime: 8.2 + Math.random() * 10,
-      frameCount: isVideo ? 120 + Math.floor(Math.random() * 60) : undefined,
-      modelUsed: ["EfficientNet-B4", "Xception"]
-    } : {
-      isDeepfake: false,
-      confidence: 0.88 + Math.random() * 0.1,
-      fileName,
-      fileType: isVideo ? 'video' : 'image',
-      processingTime: 5.1 + Math.random() * 8,
-      frameCount: isVideo ? 150 + Math.floor(Math.random() * 80) : undefined,
-      modelUsed: ["EfficientNet-B4", "ResNet-50"]
-    };
+  const fetchResults = async (jobId: string) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/results/${jobId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch results');
+      }
 
-    setAnalysisResult(mockResult);
-    setCurrentState('results');
+      const data = await response.json();
+      
+      // Transform backend response to frontend format
+      const result: AnalysisResult = {
+        overall_prediction: data.results.overall_prediction,
+        confidence: data.results.confidence,
+        fileName: data.filename,
+        fileType: data.file_type,
+        faces_detected: data.results.faces_detected || 0,
+        face_results: data.results.face_results,
+        frame_results: data.results.frame_results,
+        analysis_timestamp: data.results.analysis_timestamp
+      };
+
+      setAnalysisResult(result);
+      setCurrentState('results');
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get results');
+    }
+  };
+
+  // Transform frame results for frame analysis component
+  const getFramesForAnalysis = (): Frame[] => {
+    if (!analysisResult?.frame_results) return [];
+    
+    return analysisResult.frame_results.slice(0, 10).map((frameResult, index) => ({
+      id: frameResult.frame_number,
+      timestamp: frameResult.timestamp,
+      confidence: frameResult.face_results.length > 0 ? 
+        Math.max(...frameResult.face_results.map(f => f.confidence)) : 0,
+      isDeepfake: frameResult.face_results.some(f => f.prediction === 'FAKE'),
+      faces: frameResult.face_results.map(face => ({
+        id: `face-${face.face_id}`,
+        bbox: {
+          x: face.bbox[0],
+          y: face.bbox[1], 
+          width: face.bbox[2] - face.bbox[0],
+          height: face.bbox[3] - face.bbox[1]
+        },
+        confidence: face.confidence,
+        isDeepfake: face.prediction === 'FAKE'
+      }))
+    }));
   };
 
   const handleViewFrames = () => {
@@ -146,6 +230,10 @@ export default function Home() {
     setSelectedFile(null);
     setAnalysisResult(null);
     setUploadProgress(0);
+    setProcessingProgress(0);
+    setProcessingMessage('');
+    setJobId(null);
+    setError(null);
   };
 
   return (
@@ -193,7 +281,9 @@ export default function Home() {
             <ProcessingStatus
               isProcessing={true}
               fileName={selectedFile?.name}
-              onComplete={handleProcessingComplete}
+              progress={processingProgress}
+              message={processingMessage}
+              error={error}
             />
           </div>
         )}
@@ -210,7 +300,7 @@ export default function Home() {
 
         {currentState === 'frameAnalysis' && (
           <FrameAnalysis
-            frames={mockFrames}
+            frames={getFramesForAnalysis()}
             onClose={handleBackToResults}
           />
         )}

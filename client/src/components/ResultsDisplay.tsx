@@ -5,13 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Shield, ShieldAlert, Download, Eye, AlertTriangle } from "lucide-react";
 
 interface AnalysisResult {
-  isDeepfake: boolean;
+  overall_prediction: string;
   confidence: number;
   fileName: string;
   fileType: 'image' | 'video';
-  processingTime: number;
-  frameCount?: number;
-  modelUsed: string[];
+  faces_detected: number;
+  face_results?: Array<{
+    face_id: number;
+    bbox: number[];
+    prediction: string;
+    confidence: number;
+  }>;
+  frame_results?: Array<{
+    frame_number: number;
+    timestamp: number;
+    faces_detected: number;
+    face_results: Array<{
+      face_id: number;
+      bbox: number[];
+      prediction: string;
+      confidence: number;
+    }>;
+  }>;
+  analysis_timestamp: string;
 }
 
 interface ResultsDisplayProps {
@@ -23,28 +39,28 @@ interface ResultsDisplayProps {
 export default function ResultsDisplay({ result, onViewFrames, onDownloadReport }: ResultsDisplayProps) {
   const getResultColor = () => {
     if (result.confidence < 0.5) return 'text-muted-foreground';
-    return result.isDeepfake ? 'text-destructive' : 'text-primary';
+    return result.overall_prediction === 'FAKE' ? 'text-destructive' : 'text-primary';
   };
 
   const getResultIcon = () => {
     if (result.confidence < 0.5) {
       return <AlertTriangle className="w-8 h-8 text-muted-foreground" />;
     }
-    return result.isDeepfake ? 
+    return result.overall_prediction === 'FAKE' ? 
       <ShieldAlert className="w-8 h-8 text-destructive" /> : 
       <Shield className="w-8 h-8 text-primary" />;
   };
 
   const getResultText = () => {
     if (result.confidence < 0.5) return 'UNCERTAIN';
-    return result.isDeepfake ? 'FAKE' : 'REAL';
+    return result.overall_prediction;
   };
 
   const getResultDescription = () => {
     if (result.confidence < 0.5) {
       return 'Analysis inconclusive. Consider uploading a higher quality file.';
     }
-    if (result.isDeepfake) {
+    if (result.overall_prediction === 'FAKE') {
       return 'AI-generated content detected. This media appears to be synthetically created.';
     }
     return 'Authentic content detected. This media appears to be genuine.';
@@ -53,7 +69,7 @@ export default function ResultsDisplay({ result, onViewFrames, onDownloadReport 
   const getConfidenceColor = () => {
     if (result.confidence < 0.5) return 'bg-muted';
     if (result.confidence < 0.7) return 'bg-chart-3'; // orange
-    return result.isDeepfake ? 'bg-destructive' : 'bg-primary';
+    return result.overall_prediction === 'FAKE' ? 'bg-destructive' : 'bg-primary';
   };
 
   return (
@@ -74,7 +90,7 @@ export default function ResultsDisplay({ result, onViewFrames, onDownloadReport 
           </p>
 
           <Badge 
-            variant={result.isDeepfake ? 'destructive' : 'default'}
+            variant={result.overall_prediction === 'FAKE' ? 'destructive' : 'default'}
             className="text-sm px-3 py-1"
             data-testid="badge-confidence"
           >
@@ -106,18 +122,18 @@ export default function ResultsDisplay({ result, onViewFrames, onDownloadReport 
             <p className="font-mono text-sm truncate" data-testid="text-filename">{result.fileName}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Processing Time</p>
-            <p className="font-mono text-sm">{result.processingTime.toFixed(1)}s</p>
+            <p className="text-sm text-muted-foreground">Faces Detected</p>
+            <p className="font-mono text-sm">{result.faces_detected}</p>
           </div>
-          {result.frameCount && (
+          {result.frame_results && (
             <div>
               <p className="text-sm text-muted-foreground">Frames Analyzed</p>
-              <p className="font-mono text-sm">{result.frameCount}</p>
+              <p className="font-mono text-sm">{result.frame_results.length}</p>
             </div>
           )}
           <div>
-            <p className="text-sm text-muted-foreground">Model</p>
-            <p className="font-mono text-sm">{result.modelUsed.join(' + ')}</p>
+            <p className="text-sm text-muted-foreground">Analysis Date</p>
+            <p className="font-mono text-sm">{new Date(result.analysis_timestamp).toLocaleString()}</p>
           </div>
         </div>
 

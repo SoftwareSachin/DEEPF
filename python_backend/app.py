@@ -18,9 +18,9 @@ import time
 from datetime import datetime
 import uuid
 
-from .video_processor import VideoProcessor
-from .deepfake_detector import DeepfakeDetector
-from .face_extractor import FaceExtractor
+from video_processor import VideoProcessor
+from deepfake_detector import DeepfakeDetector
+from face_extractor import FaceExtractor
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'deepfake-detection-secret'

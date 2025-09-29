@@ -15,10 +15,20 @@ interface ProcessingStep {
 interface ProcessingStatusProps {
   isProcessing: boolean;
   fileName?: string;
+  progress?: number;
+  message?: string;
+  error?: string | null;
   onComplete?: () => void;
 }
 
-export default function ProcessingStatus({ isProcessing, fileName = "video.mp4", onComplete }: ProcessingStatusProps) {
+export default function ProcessingStatus({ 
+  isProcessing, 
+  fileName = "video.mp4", 
+  progress = 0, 
+  message = '',
+  error = null,
+  onComplete 
+}: ProcessingStatusProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [steps, setSteps] = useState<ProcessingStep[]>([
     {
@@ -88,7 +98,8 @@ export default function ProcessingStatus({ isProcessing, fileName = "video.mp4",
     return () => clearInterval(interval);
   }, [isProcessing, onComplete]);
 
-  const overallProgress = steps.reduce((acc, step) => acc + step.progress, 0) / steps.length;
+  // Use real progress from backend instead of simulated steps
+  const overallProgress = progress;
 
   if (!isProcessing) {
     return null;
@@ -101,7 +112,7 @@ export default function ProcessingStatus({ isProcessing, fileName = "video.mp4",
         <div className="text-center">
           <h3 className="text-lg font-medium mb-2">Analyzing {fileName}</h3>
           <p className="text-sm text-muted-foreground">
-            Using multi-model CNN analysis for deepfake detection
+            {error ? error : message || 'Using lightweight ensemble models for deepfake detection'}
           </p>
         </div>
 
