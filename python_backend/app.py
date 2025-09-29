@@ -309,4 +309,4 @@ def handle_disconnect():
 if __name__ == '__main__':
     print("Starting Deepfake Detection Server...")
     print("Server will run on http://0.0.0.0:5001")
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False, log_output=True)
+    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False, log_output=True, allow_unsafe_werkzeug=True)

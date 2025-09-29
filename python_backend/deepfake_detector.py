@@ -136,8 +136,8 @@ class DeepfakeDetector:
         # Resize to standard size for consistent features
         gray = cv2.resize(gray, (64, 64))
         
-        # Apply DCT
-        gray_float = np.float32(gray)
+        # Apply DCT (Discrete Cosine Transform)
+        gray_float = gray.astype(np.float32)
         dct = cv2.dct(gray_float)
         
         # Extract features from DCT coefficients
@@ -216,20 +216,21 @@ class DeepfakeDetector:
         edge_density = edge_features[2]  # Edge density feature
         
         # Scoring heuristics
-        if texture_entropy > 4.5:  # High texture entropy might indicate artifacts
+        if float(texture_entropy) > 4.5:  # High texture entropy might indicate artifacts
             score += 0.3
         
-        if color_variance < 0.01:  # Very low color variance might indicate processing
+        if float(color_variance) < 0.01:  # Very low color variance might indicate processing
             score += 0.2
             
-        if edge_density > 0.3:  # High edge density might indicate compression artifacts
+        if float(edge_density) > 0.3:  # High edge density might indicate compression artifacts
             score += 0.2
         
         # Simple threshold-based decision
-        if score > 0.4:
-            return 'FAKE', min(0.8, 0.5 + score)
+        score_float = float(score) if hasattr(score, 'item') else score
+        if score_float > 0.4:
+            return 'FAKE', min(0.8, 0.5 + score_float)
         else:
-            return 'REAL', min(0.8, 0.5 + (0.4 - score))
+            return 'REAL', min(0.8, 0.5 + (0.4 - score_float))
     
     def save_models(self, directory: str = 'cnn_models'):
         """Save CNN ensemble models to disk"""

@@ -151,7 +151,7 @@ class VideoProcessor:
                 # Update progress
                 frame_progress = 30 + (i / total_frames) * 50
                 if progress_callback:
-                    progress_callback(frame_progress, f"Processing frame {i+1}/{total_frames}")
+                    progress_callback(int(frame_progress), f"Processing frame {i+1}/{total_frames}")
                 
                 # Extract faces from frame
                 faces = face_extractor.extract_faces(frame)
@@ -205,7 +205,8 @@ class VideoProcessor:
                 })
                 
                 if progress_callback:
-                    progress_callback(frame_progress, f"Error in frame {i+1}: {str(e)}")
+                    error_progress = 30 + (i / total_frames) * 50 if total_frames > 0 else 30
+                    progress_callback(int(error_progress), f"Error in frame {i+1}: {str(e)}")
         
         if progress_callback:
             progress_callback(80, "Frame analysis complete")
@@ -237,7 +238,7 @@ class VideoProcessor:
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             
             # Create video writer
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
             out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
             
             frame_count = 0

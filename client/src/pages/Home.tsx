@@ -61,7 +61,7 @@ export default function Home() {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const newSocket = io('http://localhost:5001');
+    const newSocket = io('http://127.0.0.1:5001');
     setSocket(newSocket);
 
     newSocket.on('progress', (data: { job_id: string; progress: number; message: string }) => {
@@ -139,7 +139,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:5001/api/upload', {
+      const response = await fetch('http://127.0.0.1:5001/api/upload', {
         method: 'POST',
         body: formData,
       });
@@ -160,7 +160,7 @@ export default function Home() {
 
   const fetchResults = async (jobId: string) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/results/${jobId}`);
+      const response = await fetch(`http://127.0.0.1:5001/api/results/${jobId}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch results');
