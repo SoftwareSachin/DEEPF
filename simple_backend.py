@@ -5,12 +5,15 @@ Simplified Python backend for testing
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import os
 import time
 import uuid
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'deepfake-detection-secret'
 CORS(app, origins=["*"])
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Store for demo results
 results_store = {}
@@ -32,13 +35,14 @@ def upload_file():
     job_id = str(uuid.uuid4())
     
     # Simulate processing with mock results
-    file_type = 'image' if file.filename.lower().endswith(('.jpg', '.jpeg', '.png')) else 'video'
+    filename = file.filename or 'unknown'
+    file_type = 'image' if filename.lower().endswith(('.jpg', '.jpeg', '.png')) else 'video'
     
     # Store mock result
     results_store[job_id] = {
         'overall_prediction': 'REAL',
         'confidence': 0.85,
-        'fileName': file.filename,
+        'fileName': filename,
         'fileType': file_type,
         'faces_detected': 1,
         'face_results': [{
@@ -52,7 +56,7 @@ def upload_file():
     
     return jsonify({
         'job_id': job_id,
-        'filename': file.filename,
+        'filename': filename,
         'file_type': file_type,
         'status': 'uploaded'
     })
@@ -70,11 +74,19 @@ def get_results(job_id):
         'results': result
     })
 
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
 if __name__ == '__main__':
     print("🚀 Starting Simple Deepfake Detection Backend...")
     print("📡 Server running on http://0.0.0.0:8000")
     try:
-        app.run(host='0.0.0.0', port=8000, debug=False, use_reloader=False)
+        socketio.run(app, host='0.0.0.0', port=8000, debug=False, use_reloader=False, log_output=True, allow_unsafe_werkzeug=True)
     except Exception as e:
         print(f"❌ Error starting server: {e}")
         import traceback

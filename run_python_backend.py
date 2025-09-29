@@ -12,7 +12,11 @@ from pathlib import Path
 backend_dir = Path(__file__).parent / "python_backend"
 sys.path.insert(0, str(backend_dir))
 
-from main import app
+try:
+    from app import app
+except ImportError:
+    # Fallback for LSP and development
+    from python_backend.app import app
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
