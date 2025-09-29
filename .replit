@@ -9,7 +9,7 @@ packages = ["cmake", "freetype", "glibcLocales", "lcms2", "libGL", "libGLU", "li
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run"]
-run = ["npm", "run", "start"]
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
 
 [[ports]]
 localPort = 5000
