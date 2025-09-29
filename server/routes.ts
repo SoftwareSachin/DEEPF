@@ -11,7 +11,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     pathRewrite: {
       '^/': '/api/', // Add /api prefix back since Express strips it
     },
-    logLevel: 'warn',
+    onError: (err: any, req: any, res: any) => {
+      console.error('Proxy error:', err);
+      res.status(504).json({ error: 'Backend service unavailable' });
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      console.log('Proxy request:', req.method, req.url, '-> http://localhost:8000' + proxyReq.path);
+    },
   }));
 
   // Health check endpoint for Node.js backend
