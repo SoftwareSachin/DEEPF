@@ -72,9 +72,9 @@ def get_results(job_id):
 
 if __name__ == '__main__':
     print("🚀 Starting Simple Deepfake Detection Backend...")
-    print("📡 Server running on http://0.0.0.0:5001")
+    print("📡 Server running on http://0.0.0.0:8000")
     try:
-        app.run(host='0.0.0.0', port=5001, debug=False, use_reloader=False)
+        app.run(host='0.0.0.0', port=8000, debug=False, use_reloader=False)
     except Exception as e:
         print(f"❌ Error starting server: {e}")
         import traceback
