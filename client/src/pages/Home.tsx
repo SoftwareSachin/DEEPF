@@ -81,8 +81,8 @@ export default function Home() {
     };
   }, [jobId]);
 
-  // Mock frame data for demonstration
-  const mockFrames: Frame[] = [
+  // Note: mockFrames removed - now using real backend data via getFramesForAnalysis()
+  const _unusedMockFrames: Frame[] = [
     {
       id: 1,
       timestamp: 0.5,

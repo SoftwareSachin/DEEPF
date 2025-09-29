@@ -1,67 +1,35 @@
 """
 Deepfake Detector Module
-Lightweight ensemble approach using traditional ML techniques
+Lightweight CNN ensemble approach using pure NumPy implementation
 without heavy TensorFlow dependencies for disk space efficiency
 """
 
 import cv2
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, VotingClassifier
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
 import pickle
 import os
 from typing import Tuple, List
 import json
+from lightweight_cnn import CNNEnsemble
 
 class DeepfakeDetector:
     def __init__(self):
-        """Initialize the ensemble deepfake detector"""
-        self.models = {}
-        self.scalers = {}
+        """Initialize the lightweight CNN ensemble deepfake detector"""
+        # Initialize CNN ensemble
+        self.cnn_ensemble = CNNEnsemble()
+        
+        # Try to load pre-trained models
+        self._load_models()
+        
+        # Fallback feature extractors for heuristic analysis
         self.feature_extractors = [
             'texture_features',
             'color_features', 
             'edge_features',
             'frequency_features'
         ]
-        
-        # Initialize models
-        self._initialize_models()
-        
-        # Try to load pre-trained models
-        self._load_models()
     
-    def _initialize_models(self):
-        """Initialize the ensemble of ML models"""
-        # Random Forest for texture analysis
-        self.models['rf'] = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            random_state=42,
-            n_jobs=-1
-        )
-        
-        # SVM for edge pattern analysis  
-        self.models['svm'] = SVC(
-            kernel='rbf',
-            probability=True,
-            random_state=42
-        )
-        
-        # Create ensemble
-        self.ensemble = VotingClassifier(
-            estimators=[
-                ('rf', self.models['rf']),
-                ('svm', self.models['svm'])
-            ],
-            voting='soft'
-        )
-        
-        # Initialize scalers for each feature type
-        for feature_type in self.feature_extractors:
-            self.scalers[feature_type] = StandardScaler()
+    # Old ML models removed - now using CNN ensemble
     
     def extract_texture_features(self, face: np.ndarray) -> np.ndarray:
         """Extract texture-based features using Local Binary Patterns"""
@@ -207,7 +175,7 @@ class DeepfakeDetector:
     
     def predict(self, face: np.ndarray) -> Tuple[str, float]:
         """
-        Predict if a face is real or fake
+        Predict if a face is real or fake using CNN ensemble
         
         Args:
             face: Face image as numpy array
@@ -215,25 +183,13 @@ class DeepfakeDetector:
         Returns:
             Tuple of (prediction, confidence)
         """
-        # Extract features
-        features = self.extract_all_features(face)
-        features = features.reshape(1, -1)
-        
-        # If models are not trained, use heuristic approach
-        if not hasattr(self.ensemble, 'estimators_'):
-            return self._heuristic_prediction(face)
-        
-        # Use trained ensemble
         try:
-            prediction = self.ensemble.predict(features)[0]
-            probabilities = self.ensemble.predict_proba(features)[0]
-            confidence = max(probabilities)
-            
-            result = 'FAKE' if prediction == 1 else 'REAL'
-            return result, confidence
+            # Use CNN ensemble for prediction
+            prediction, confidence = self.cnn_ensemble.predict(face)
+            return prediction, confidence
             
         except Exception as e:
-            print(f"Prediction error: {e}")
+            print(f"CNN prediction error: {e}, falling back to heuristic")
             return self._heuristic_prediction(face)
     
     def _heuristic_prediction(self, face: np.ndarray) -> Tuple[str, float]:
@@ -275,82 +231,34 @@ class DeepfakeDetector:
         else:
             return 'REAL', min(0.8, 0.5 + (0.4 - score))
     
-    def train_on_batch(self, faces: List[np.ndarray], labels: List[int]):
-        """
-        Train the models on a batch of faces
-        
-        Args:
-            faces: List of face images
-            labels: List of labels (0 for real, 1 for fake)
-        """
-        if len(faces) != len(labels):
-            raise ValueError("Number of faces and labels must match")
-        
-        # Extract features for all faces
-        all_features = []
-        for face in faces:
-            features = self.extract_all_features(face)
-            all_features.append(features)
-        
-        X = np.array(all_features)
-        y = np.array(labels)
-        
-        # Train the ensemble
-        self.ensemble.fit(X, y)
-        
-        print(f"Trained on {len(faces)} faces")
-    
-    def save_models(self, directory: str = 'models'):
-        """Save trained models to disk"""
-        os.makedirs(directory, exist_ok=True)
-        
-        if hasattr(self.ensemble, 'estimators_'):
-            with open(os.path.join(directory, 'ensemble.pkl'), 'wb') as f:
-                pickle.dump(self.ensemble, f)
-            
-            # Save scalers
-            for name, scaler in self.scalers.items():
-                with open(os.path.join(directory, f'scaler_{name}.pkl'), 'wb') as f:
-                    pickle.dump(scaler, f)
-            
-            print(f"Models saved to {directory}")
-    
-    def _load_models(self, directory: str = 'models'):
-        """Load pre-trained models from disk"""
-        if not os.path.exists(directory):
-            print("No pre-trained models found. Using heuristic detection.")
-            return
-        
+    def save_models(self, directory: str = 'cnn_models'):
+        """Save CNN ensemble models to disk"""
         try:
-            ensemble_path = os.path.join(directory, 'ensemble.pkl')
-            if os.path.exists(ensemble_path):
-                with open(ensemble_path, 'rb') as f:
-                    self.ensemble = pickle.load(f)
-                
-                # Load scalers
-                for name in self.feature_extractors:
-                    scaler_path = os.path.join(directory, f'scaler_{name}.pkl')
-                    if os.path.exists(scaler_path):
-                        with open(scaler_path, 'rb') as f:
-                            self.scalers[name] = pickle.load(f)
-                
-                print("Pre-trained models loaded successfully")
-            
+            self.cnn_ensemble.save_models(directory)
+            print(f"CNN ensemble saved to {directory}")
         except Exception as e:
-            print(f"Error loading models: {e}. Using heuristic detection.")
+            print(f"Error saving CNN models: {e}")
+    
+    def _load_models(self, directory: str = 'cnn_models'):
+        """Load pre-trained CNN models from disk"""
+        try:
+            self.cnn_ensemble.load_models(directory)
+            print("CNN ensemble models loaded successfully")
+        except Exception as e:
+            print(f"Error loading CNN models: {e}. Using default initialization.")
     
     def get_model_info(self) -> dict:
         """Get information about the current models"""
-        info = {
-            'ensemble_trained': hasattr(self.ensemble, 'estimators_'),
-            'feature_extractors': self.feature_extractors,
-            'models': list(self.models.keys())
-        }
+        cnn_info = self.cnn_ensemble.get_model_info()
         
-        if info['ensemble_trained']:
-            info['model_details'] = {
-                'n_estimators': len(self.ensemble.estimators_),
-                'feature_count': len(self.feature_extractors)
-            }
+        info = {
+            'model_type': 'Lightweight CNN Ensemble',
+            'ensemble_size': cnn_info['ensemble_size'],
+            'architecture': cnn_info['architecture'],
+            'input_size': cnn_info['input_size'],
+            'model_names': cnn_info['model_names'],
+            'trained_models': cnn_info['trained_models'],
+            'fallback_features': self.feature_extractors
+        }
         
         return info
