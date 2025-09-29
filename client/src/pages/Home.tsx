@@ -59,25 +59,12 @@ export default function Home() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize WebSocket connection
+  // Disable Socket.IO for now - use setTimeout-based progress instead
   useEffect(() => {
-    const newSocket = io('http://127.0.0.1:8000');
-    setSocket(newSocket);
-
-    newSocket.on('progress', (data: { job_id: string; progress: number; message: string }) => {
-      if (data.job_id === jobId) {
-        setProcessingProgress(data.progress);
-        setProcessingMessage(data.message);
-        
-        if (data.progress === 100) {
-          // Processing complete, fetch results
-          fetchResults(data.job_id);
-        }
-      }
-    });
-
+    // Socket.IO connection disabled to avoid proxy issues
+    // Progress updates handled via setTimeout in handleFileSelect
     return () => {
-      newSocket.close();
+      // Cleanup if needed
     };
   }, [jobId]);
 
@@ -139,7 +126,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://127.0.0.1:8000/api/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
@@ -152,6 +139,27 @@ export default function Home() {
       setJobId(data.job_id);
       setUploadProgress(100);
       
+      // Simulate progress updates since WebSocket might not work
+      setProcessingProgress(25);
+      setProcessingMessage('Upload complete, starting analysis...');
+      
+      setTimeout(() => {
+        setProcessingProgress(50);
+        setProcessingMessage('Extracting frames...');
+      }, 1000);
+      
+      setTimeout(() => {
+        setProcessingProgress(75);
+        setProcessingMessage('Detecting faces and analyzing...');
+      }, 2000);
+      
+      setTimeout(() => {
+        setProcessingProgress(100);
+        setProcessingMessage('Analysis complete!');
+        // Fetch results after simulated processing
+        fetchResults(data.job_id);
+      }, 3000);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       setCurrentState('upload');
@@ -160,7 +168,7 @@ export default function Home() {
 
   const fetchResults = async (jobId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/results/${jobId}`);
+      const response = await fetch(`/api/results/${jobId}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch results');
@@ -190,26 +198,52 @@ export default function Home() {
 
   // Transform frame results for frame analysis component
   const getFramesForAnalysis = (): Frame[] => {
-    if (!analysisResult?.frame_results) return [];
+    if (!analysisResult) return [];
     
-    return analysisResult.frame_results.slice(0, 10).map((frameResult, index) => ({
-      id: frameResult.frame_number,
-      timestamp: frameResult.timestamp,
-      confidence: frameResult.face_results.length > 0 ? 
-        Math.max(...frameResult.face_results.map(f => f.confidence)) : 0,
-      isDeepfake: frameResult.face_results.some(f => f.prediction === 'FAKE'),
-      faces: frameResult.face_results.map(face => ({
-        id: `face-${face.face_id}`,
-        bbox: {
-          x: face.bbox[0],
-          y: face.bbox[1], 
-          width: face.bbox[2] - face.bbox[0],
-          height: face.bbox[3] - face.bbox[1]
-        },
-        confidence: face.confidence,
-        isDeepfake: face.prediction === 'FAKE'
-      }))
-    }));
+    // If we have frame_results (video), use them
+    if (analysisResult.frame_results && analysisResult.frame_results.length > 0) {
+      return analysisResult.frame_results.slice(0, 10).map((frameResult, index) => ({
+        id: frameResult.frame_number,
+        timestamp: frameResult.timestamp,
+        confidence: frameResult.face_results.length > 0 ? 
+          Math.max(...frameResult.face_results.map(f => f.confidence)) : 0,
+        isDeepfake: frameResult.face_results.some(f => f.prediction === 'FAKE'),
+        faces: frameResult.face_results.map(face => ({
+          id: `face-${face.face_id}`,
+          bbox: {
+            x: face.bbox[0],
+            y: face.bbox[1], 
+            width: face.bbox[2] - face.bbox[0],
+            height: face.bbox[3] - face.bbox[1]
+          },
+          confidence: face.confidence,
+          isDeepfake: face.prediction === 'FAKE'
+        }))
+      }));
+    }
+    
+    // For single images, create a mock frame from face_results
+    if (analysisResult.face_results && analysisResult.face_results.length > 0) {
+      return [{
+        id: 1,
+        timestamp: 0,
+        confidence: analysisResult.confidence,
+        isDeepfake: analysisResult.overall_prediction === 'FAKE',
+        faces: analysisResult.face_results.map(face => ({
+          id: `face-${face.face_id}`,
+          bbox: {
+            x: face.bbox[0],
+            y: face.bbox[1], 
+            width: face.bbox[2] - face.bbox[0],
+            height: face.bbox[3] - face.bbox[1]
+          },
+          confidence: face.confidence,
+          isDeepfake: face.prediction === 'FAKE'
+        }))
+      }];
+    }
+    
+    return [];
   };
 
   const handleViewFrames = () => {

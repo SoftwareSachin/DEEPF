@@ -11,7 +11,7 @@ import time
 import uuid
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'deepfake-detection-secret'
+app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET', 'dev-secret-key')
 CORS(app, origins=["*"])
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -53,6 +53,31 @@ def upload_file():
         }],
         'analysis_timestamp': time.time()
     }
+    
+    # Immediately simulate progress and emit final result
+    socketio.emit('progress', {
+        'job_id': job_id,
+        'progress': 25,
+        'message': 'Upload complete, starting analysis...'
+    })
+    
+    socketio.emit('progress', {
+        'job_id': job_id,
+        'progress': 50,
+        'message': 'Extracting frames...'
+    })
+    
+    socketio.emit('progress', {
+        'job_id': job_id,
+        'progress': 75,
+        'message': 'Detecting faces and analyzing...'
+    })
+    
+    socketio.emit('progress', {
+        'job_id': job_id,
+        'progress': 100,
+        'message': 'Analysis complete!'
+    })
     
     return jsonify({
         'job_id': job_id,

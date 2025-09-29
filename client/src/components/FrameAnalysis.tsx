@@ -204,9 +204,9 @@ export default function FrameAnalysis({ frames, videoUrl, onClose }: FrameAnalys
 
             {/* Face Detections */}
             <div>
-              <h4 className="font-medium mb-3">Detected Faces ({currentFrame.faces.length})</h4>
+              <h4 className="font-medium mb-3">Detected Faces ({currentFrame.faces?.length || 0})</h4>
               <div className="space-y-2">
-                {currentFrame.faces.map((face) => (
+                {(currentFrame.faces || []).map((face) => (
                   <div 
                     key={face.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
