@@ -16,10 +16,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 5001
-externalPort = 3002
-
-[[ports]]
 localPort = 8000
 externalPort = 8000
 
@@ -63,6 +59,9 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow]]
 name = "Python Backend"
 author = "agent"
@@ -72,8 +71,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python simple_backend.py"
-waitForPort = 8000
+args = "python start_backend.py"
 
 [agent]
 expertMode = true

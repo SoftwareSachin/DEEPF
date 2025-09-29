@@ -20,12 +20,12 @@ try:
     print("✓ Created upload and results directories")
     
     print("🚀 Starting Deepfake Detection Backend Server...")
-    print("📡 Server running on http://0.0.0.0:5001")
+    print("📡 Server running on http://0.0.0.0:8000")
     print("💻 WebSocket support enabled for real-time updates")
     print("⚡ Ready to process images and videos for deepfake detection")
     
-    # Start the server
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False, log_output=True)
+    # Start the server on allowed port 8000 for Replit
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True, use_reloader=False, log_output=True)
     
 except ImportError as e:
     print(f"❌ Import error: {e}")
@@ -37,7 +37,7 @@ except ImportError as e:
     # Retry import
     from python_backend.app import app, socketio
     print("✓ Dependencies installed, starting server...")
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False, log_output=True)
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True, use_reloader=False, log_output=True)
     
 except Exception as e:
     print(f"❌ Error starting server: {e}")
