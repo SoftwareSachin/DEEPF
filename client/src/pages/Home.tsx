@@ -131,11 +131,13 @@ export default function Home() {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        // Handle different types of errors properly
+        const errorMessage = data.error || `Upload failed (${response.status})`;
+        throw new Error(errorMessage);
+      }
       setJobId(data.job_id);
       setUploadProgress(100);
       
