@@ -7,9 +7,9 @@ channel = "stable-25_05"
 packages = ["cmake", "freetype", "glibcLocales", "lcms2", "libGL", "libGLU", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "pkg-config", "postgresql", "tcl", "tk", "zlib"]
 
 [deployment]
-deploymentTarget = "autoscale"
-build = ["npm", "run", "build"]
-run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
+deploymentTarget = "vm"
+build = ["npm", "run"]
+run = ["bash", "-c", "npm run build && python simple_backend.py & npm run start"]
 
 [[ports]]
 localPort = 5000
